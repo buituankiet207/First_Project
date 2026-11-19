@@ -8,7 +8,9 @@ services:
       MYSQL_DATABASE: library
       MYSQL_USER: library
       MYSQL_PASSWORD: library
+      environment:
       TZ: Asia/Ho_Chi_Minh
+      JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Ho_Chi_Minh
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     volumes:
       - dbdata:/var/lib/mysql

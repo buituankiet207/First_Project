@@ -125,7 +125,7 @@ public class JdbcStore implements LibraryStore {
             if (v == null) ps.setNull(i + 1, Types.NULL);
             else if (v instanceof Enum<?> e) ps.setString(i + 1, e.name());
             else if (v instanceof LocalDate d) ps.setDate(i + 1, java.sql.Date.valueOf(d));
-            else if (v instanceof LocalDateTime t) ps.setTimestamp(i + 1, Timestamp.valueOf(t));
+            else if (v instanceof LocalDateTime t) ps.setObject(i + 1, t);
             else if (v instanceof Boolean b) ps.setBoolean(i + 1, b);
             else ps.setObject(i + 1, v);
         }
@@ -190,9 +190,8 @@ public class JdbcStore implements LibraryStore {
     }
 
     private static LocalDateTime time(ResultSet rs, String col) throws SQLException {
-        Timestamp t = rs.getTimestamp(col);
-        return t == null ? null : t.toLocalDateTime();
-    }
+    return rs.getObject(col, LocalDateTime.class);
+}
 
     private static String like(String s) {
         return "%" + s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";

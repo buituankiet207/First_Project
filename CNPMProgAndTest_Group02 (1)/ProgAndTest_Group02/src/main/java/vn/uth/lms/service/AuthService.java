@@ -66,18 +66,22 @@ public class AuthService {
     public Session login(String username, String password) {
         if (TextUtil.isBlank(username) || TextUtil.isBlank(password))
             throw AppException.badRequest("Please enter your username and password");
+        LocalDateTime now = LocalDateTime.now(clock);
+        User check = store.findUserByUsername(username.trim());
+        if (check == null || check.isDeleted()) throw AppException.unauthorized(INVALID_CREDENTIALS);
+        if (check.isTemporarilyLocked(now))
+            throw AppException.forbidden("Too many failed attempts. The account is locked until "
+                    + check.getLockedUntil().format(DateTimeFormatter.ofPattern("HH:mm")));
+        if (!PasswordHasher.verify(password, check.getPasswordHash())) {
+            store.tx(() -> {
+                check.registerFailedLogin(now);
+                store.saveUser(check);
+                return null;
+            });
+            throw AppException.unauthorized(INVALID_CREDENTIALS);
+        }
         return store.tx(() -> {
-            LocalDateTime now = LocalDateTime.now(clock);
             User u = store.findUserByUsername(username.trim());
-            if (u == null || u.isDeleted()) throw AppException.unauthorized(INVALID_CREDENTIALS);
-            if (u.isTemporarilyLocked(now))
-                throw AppException.forbidden("Too many failed attempts. The account is locked until "
-                        + u.getLockedUntil().format(DateTimeFormatter.ofPattern("HH:mm")));
-            if (!PasswordHasher.verify(password, u.getPasswordHash())) {
-                u.registerFailedLogin(now);
-                store.saveUser(u);
-                throw AppException.unauthorized(INVALID_CREDENTIALS);
-            }
             if (u.getStatus() == AccountStatus.LOCKED) throw AppException.forbidden("Your account is locked. Please contact the library");
             if (u.getFailedAttempts() != 0 || u.getLockedUntil() != null) {
                 u.resetFailedLogins();
